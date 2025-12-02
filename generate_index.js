@@ -2,29 +2,28 @@
 const fs = require('fs');
 const path = require('path');
 
-const rootDir = '.'; // 仓库根目录
-const outputFile = 'index.html';
-
-function walk(dir) {
-  let results = [];
-  const list = fs.readdirSync(dir);
-  list.forEach(file => {
-    const fullPath = path.join(dir, file);
-    const stat = fs.statSync(fullPath);
-    if (stat && stat.isDirectory()) {
-      results = results.concat(walk(fullPath));
-    } else {
-      // 只列出文本类文件（可按需调整扩展名）
-      if (/\.(txt|md|json|csv|log|ini|xml|yaml|yml)$/i.test(file)) {
-        // 转为相对路径（用于 href）
-        results.push(fullPath.replace(/^\.\/?/, ''));
-      }
+function walk(dir, fileList = []) {
+  const items = fs.readdirSync(dir);
+  for (const item of items) {
+    // 跳过隐藏文件/目录（如 .git, .github, .gitignore 等）
+    if (item.startsWith('.')) {
+      continue;
     }
-  });
-  return results;
+
+    const fullPath = path.join(dir, item);
+    const relPath = path.relative('.', fullPath).replace(/\\/g, '/'); // 统一用正斜杠
+    const stat = fs.statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      walk(fullPath, fileList);
+    } else if (/\.(txt|md|json|csv|log|ini|xml|yaml|yml)$/i.test(item)) {
+      fileList.push(relPath);
+    }
+  }
+  return fileList;
 }
 
-const files = walk(rootDir).sort();
+const files = walk('.').sort(); // 稳定排序
 
 let html = `<!DOCTYPE html>
 <html lang="zh">
@@ -47,7 +46,7 @@ let html = `<!DOCTYPE html>
 `;
 
 files.forEach(file => {
-  const encoded = encodeURI(file); // 处理中文或特殊字符
+  const encoded = encodeURI(file);
   html += `    <li><a href="${encoded}">${file}</a></li>\n`;
 });
 
@@ -56,5 +55,20 @@ html += `  </ul>
 </body>
 </html>`;
 
-fs.writeFileSync(outputFile, html);
-console.log(`✅ 已生成 ${outputFile}，共 ${files.length} 个文件`);
+// 仅当内容变化时才写入文件，避免无意义提交
+let shouldWrite = true;
+const outputPath = 'index.html';
+if (fs.existsSync(outputPath)) {
+  const existing = fs.readFileSync(outputPath, 'utf8');
+  if (existing === html) {
+    console.log('⏩ index.html 无变化，跳过写入');
+    shouldWrite = false;
+  }
+}
+
+if (shouldWrite) {
+  fs.writeFileSync(outputPath, html, 'utf8');
+  console.log(`✅ 已更新 index.html，共 ${files.length} 个文件`);
+} else {
+  console.log(`ℹ️ 当前文件数：${files.length}`);
+}
