@@ -128,7 +128,7 @@ jobs:
                 DATE_DESC="Beijing Today"
                 ;;
               "yesterday")
-                Y="$BJ_YESTERDAY_YEAR"; M="$BJ_YESTERDAY_MONTH"; D="$BJ_YESTERDAY_DAY"; YMD="$BJ_YESTERDAY_YMD"
+                Y="$BJ_YESTERDATE_YEAR"; M="$BJ_YESTERDAY_MONTH"; D="$BJ_YESTERDAY_DAY"; YMD="$BJ_YESTERDAY_YMD"
                 DATE_DESC="Beijing Yesterday"
                 ;;
               "two_days_ago")
@@ -196,7 +196,6 @@ jobs:
 
           if [ "$downloaded" = false ]; then
             echo "::warning::No valid config found for $OUTPUT_NAME after 3-day fallback"
-            # If no new file was downloaded successfully, old file (if any) is preserved
           else
             echo "   🎉 Successfully downloaded $OUTPUT_NAME"
           fi
@@ -208,24 +207,22 @@ jobs:
         echo "📥 Downloaded files:"
         ls -la *_latest.* 2>/dev/null || echo "No _latest files found."
 
-    - name: Check for actual Git changes (improved)
+    - name: Check for actual changes (handle new files too)
       id: git_check
       run: |
-        # Check if there are any changes in *_latest.* files
-        if git diff --quiet HEAD -- *_latest.* 2>/dev/null; then
-          # No changes in the files we care about
-          echo "has_changes=false" >> "$GITHUB_OUTPUT"
-          echo "Files exist but content unchanged. No commit needed."
+        # Check git status for any changes in *_latest.* files
+        # This will detect: new files, modified files, deleted files
+        git_status=$(git status --porcelain -- *_latest.* 2>/dev/null)
+        
+        if [ -n "$git_status" ]; then
+          # There are changes: new, modified, or deleted files
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "Changes detected in config files:"
+          echo "$git_status"
         else
-          # There are changes in *_latest.* files
-          if ls *_latest.* 1> /dev/null 2>&1; then
-            echo "has_changes=true" >> "$GITHUB_OUTPUT"
-            echo "Changes detected in config files:"
-            git status --porcelain -- *_latest.*
-          else
-            echo "has_changes=false" >> "$GITHUB_OUTPUT"
-            echo "No config files to commit."
-          fi
+          # No changes at all (no new, modified, or deleted files)
+          echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          echo "No changes detected, will not commit."
         fi
 
     - name: Commit and push changes
