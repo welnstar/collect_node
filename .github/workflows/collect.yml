@@ -31,11 +31,11 @@ jobs:
     - name: Download configs with date fallback
       run: |
         CONFIG_LIST=(
-          "https://node.freeclashnode.com/uploads;0-;.yaml;freeclashnode-0.yaml"
-          "https://node.freeclashnode.com/uploads;1-;.yaml;freeclashnode-1.yaml"
-          "https://node.freeclashnode.com/uploads;2-;.yaml;freeclashnode-2.yaml"
-          "https://node.freeclashnode.com/uploads;3-;.yaml;freeclashnode-3.yaml"
-          "https://node.freeclashnode.com/uploads;4-;.yaml;freeclashnode-4.yaml"
+          "https://node.freeclashnode.com/uploads;0-;.yaml;freeclashnode-0_latest.yaml"
+          "https://node.freeclashnode.com/uploads;1-;.yaml;freeclashnode-1_latest.yaml"
+          "https://node.freeclashnode.com/uploads;2-;.yaml;freeclashnode-2_latest.yaml"
+          "https://node.freeclashnode.com/uploads;3-;.yaml;freeclashnode-3_latest.yaml"
+          "https://node.freeclashnode.com/uploads;4-;.yaml;freeclashnode-4_latest.yaml"
   
           # 可在此添加更多配置...
         )
