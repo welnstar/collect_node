@@ -1,0 +1,63 @@
+name: Test Environment Variable
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # 🔥 在这里指定你的 Environment 名称
+    environment: daily-config  # ← 确保这个名称与 GitHub 中的 Environment 名称完全一致
+    steps:
+    - name: Check Environment Variables
+      run: |
+        echo "🔍 Testing Environment Variable Access"
+        echo "====================================="
+        
+        # 检查所有包含 CONFIG 的环境变量
+        echo "📋 All environment variables containing 'CONFIG':"
+        env | grep -i config || echo "❌ No CONFIG variables found"
+        
+        echo ""
+        # 直接输出 CONFIG_LIST
+        echo "📋 CONFIG_LIST value:"
+        echo "----------------------"
+        if [[ -z "$CONFIG_LIST" ]]; then
+          echo "❌ CONFIG_LIST is EMPTY!"
+          echo "Possible reasons:"
+          echo "  1. Environment name in YAML doesn't match GitHub"
+          echo "  2. CONFIG_LIST variable doesn't exist in that Environment"
+          echo "  3. Variable name is misspelled"
+          echo "  4. Current branch doesn't have access to this Environment"
+        else
+          echo "✅ CONFIG_LIST has content (length: ${#CONFIG_LIST})"
+          echo "$CONFIG_LIST"
+          echo "----------------------"
+          echo "Number of lines: $(echo "$CONFIG_LIST" | wc -l)"
+        fi
+        
+        echo ""
+        # 检查 Environment 信息
+        echo "📋 Environment Info:"
+        echo "GITHUB_ENVIRONMENT: $GITHUB_ENVIRONMENT"
+        echo "Environment context is: ${{ github.event.inputs.environment || 'not set' }}"
+        
+        echo ""
+        # 测试其他可能的变量名
+        echo "📋 Testing common variations:"
+        echo "CONFIG_LIST length: ${#CONFIG_LIST}"
+        echo "config_list length: ${#config_list}"
+        echo "Config_List length: ${#Config_List}"
+        
+        echo ""
+        # 尝试解析为数组
+        if [[ -n "$CONFIG_LIST" ]]; then
+          echo "📋 Attempting to parse as array:"
+          readarray -t CONFIG_ARRAY <<<"$CONFIG_LIST"
+          echo "Array has ${#CONFIG_ARRAY[@]} elements:"
+          for i in "${!CONFIG_ARRAY[@]}"; do
+            if [[ -n "${CONFIG_ARRAY[$i]}" ]]; then
+              echo "  [$i]: [${CONFIG_ARRAY[$i]}]"
+            fi
+          done
+        fi
