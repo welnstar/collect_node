@@ -1,0 +1,86 @@
+name: Daily Multi-Config Update
+
+on:
+  schedule:
+    - cron: '10 0 * * *'  # 每天 UTC 00:10 运行（北京时间 08:10，确保源站已更新）
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.REPO_ACCESS_TOKEN }}
+
+    - name: Generate date candidates (UTC and Beijing)
+      id: dates
+      run: |
+        # UTC 日期
+        UTC_TODAY=$(date -u +%Y%m%d)
+        UTC_YESTERDAY=$(date -u -d '1 day ago' +%Y%m%d)
+        
+        # 北京时间（UTC+8）日期
+        BJ_TODAY=$(date -u -d '+8 hours' +%Y%m%d)
+        BJ_YESTERDAY=$(date -u -d '+8 hours -1 day' +%Y%m%d)
+        
+        # 按优先级排序：先试北京时间今天，再昨天，再 UTC 今天（适应中国源站）
+        echo "DATE_LIST=${BJ_TODAY},${BJ_YESTERDAY},${UTC_TODAY},${UTC_YESTERDAY}" >> "$GITHUB_OUTPUT"
+
+    - name: Download configs with date fallback
+      run: |
+        CONFIG_LIST=(
+          "https://node.freeclashnode.com/uploads;4-;.yaml;node_latest.yaml"
+          "https://rule.freeclashrule.com/rules;5-;.list;rule_latest.list"
+          # 可在此添加更多配置...
+        )
+
+        # 读取日期候选列表
+        IFS=',' read -r -a DATES <<< "${{ steps.dates.outputs.DATE_LIST }}"
+
+        for config in "${CONFIG_LIST[@]}"; do
+          IFS=';' read -r BASE_URL PREFIX SUFFIX OUTPUT_NAME <<< "$config"
+          downloaded=false
+
+          echo "🔍 Processing $OUTPUT_NAME..."
+
+          for try_date in "${DATES[@]}"; do
+            YEAR=${try_date:0:4}
+            MONTH=${try_date:4:2}
+            FULL_URL="${BASE_URL}/${YEAR}/${MONTH}/${PREFIX}${try_date}${SUFFIX}"
+
+            echo "  → Trying: $FULL_URL"
+
+            if curl -f -L --retry 2 --retry-delay 3 --max-time 25 -o "${OUTPUT_NAME}" "${FULL_URL}"; then
+              echo "  ✅ Success! Saved as $OUTPUT_NAME (date: $try_date)"
+              downloaded=true
+              break
+            else
+              echo "  ⚠️  Failed: $FULL_URL"
+            fi
+          done
+
+          if [ "$downloaded" = false ]; then
+            echo "::warning::All date attempts failed for $OUTPUT_NAME. Skipping."
+            # 不创建空文件，避免污染仓库
+          fi
+        done
+
+    - name: Check if any valid config files exist
+      id: check
+      run: |
+        if ls *_latest.* 1> /dev/null 2>&1; then
+          echo "has_files=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "has_files=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Commit and push (only if files exist)
+      if: steps.check.outputs.has_files == 'true'
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "Bot: Daily config update ($(date -u +%Y%m%d))"
+        file_pattern: '*_latest.*'
+        token: ${{ secrets.REPO_ACCESS_TOKEN }}
+        skip_dirty_check: true  # 防止因换行符等问题报错
