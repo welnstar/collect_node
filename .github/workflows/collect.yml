@@ -2,7 +2,7 @@ name: Daily Multi-Config Update
 
 on:
   schedule:
-    - cron: '10 0 * * *'  # UTC 00:10 = Beijing 08:10
+    - cron: '10 0 * * *'  # UTC 00:10 = 北京时间 08:10
   workflow_dispatch:
 
 jobs:
@@ -14,90 +14,100 @@ jobs:
       with:
         token: ${{ secrets.REPO_ACCESS_TOKEN }}
 
-    - name: Generate date contexts (UTC and Beijing)
+    - name: Generate date contexts (Beijing Time ±2 days)
       id: dates
       run: |
-        # UTC
-        UTC_YEAR=$(date -u +%Y)
-        UTC_MONTH=$(date -u +%m)
-        UTC_DAY=$(date -u +%d)
-        UTC_YMD=$(date -u +%Y%m%d)
+        # Today (Beijing = UTC+8)
+        BJ_TODAY_YMD=$(date -u -d '+8 hours' +%Y%m%d)
+        BJ_TODAY_YEAR=$(date -u -d '+8 hours' +%Y)
+        BJ_TODAY_MONTH=$(date -u -d '+8 hours' +%m)
+        BJ_TODAY_DAY=$(date -u -d '+8 hours' +%d)
 
-        # Beijing Time (UTC+8)
-        BJ_YEAR=$(date -u -d '+8 hours' +%Y)
-        BJ_MONTH=$(date -u -d '+8 hours' +%m)
-        BJ_DAY=$(date -u -d '+8 hours' +%d)
-        BJ_YMD=$(date -u -d '+8 hours' +%Y%m%d)
-
-        # Beijing Yesterday
+        # Yesterday
+        BJ_YESTERDAY_YMD=$(date -u -d '+8 hours -1 day' +%Y%m%d)
         BJ_YESTERDAY_YEAR=$(date -u -d '+8 hours -1 day' +%Y)
         BJ_YESTERDAY_MONTH=$(date -u -d '+8 hours -1 day' +%m)
         BJ_YESTERDAY_DAY=$(date -u -d '+8 hours -1 day' +%d)
-        BJ_YESTERDAY_YMD=$(date -u -d '+8 hours -1 day' +%Y%m%d)
 
-        # Output for next steps
-        echo "BJ_YEAR=$BJ_YEAR" >> "$GITHUB_OUTPUT"
-        echo "BJ_MONTH=$BJ_MONTH" >> "$GITHUB_OUTPUT"
-        echo "BJ_DAY=$BJ_DAY" >> "$GITHUB_OUTPUT"
-        echo "BJ_YMD=$BJ_YMD" >> "$GITHUB_OUTPUT"
+        # 2 Days Ago
+        BJ_2DAYSAGO_YMD=$(date -u -d '+8 hours -2 days' +%Y%m%d)
+        BJ_2DAYSAGO_YEAR=$(date -u -d '+8 hours -2 days' +%Y)
+        BJ_2DAYSAGO_MONTH=$(date -u -d '+8 hours -2 days' +%m)
+        BJ_2DAYSAGO_DAY=$(date -u -d '+8 hours -2 days' +%d)
+
+        # Output
+        echo "BJ_TODAY_YMD=$BJ_TODAY_YMD" >> "$GITHUB_OUTPUT"
+        echo "BJ_TODAY_YEAR=$BJ_TODAY_YEAR" >> "$GITHUB_OUTPUT"
+        echo "BJ_TODAY_MONTH=$BJ_TODAY_MONTH" >> "$GITHUB_OUTPUT"
+        echo "BJ_TODAY_DAY=$BJ_TODAY_DAY" >> "$GITHUB_OUTPUT"
+
+        echo "BJ_YESTERDAY_YMD=$BJ_YESTERDAY_YMD" >> "$GITHUB_OUTPUT"
         echo "BJ_YESTERDAY_YEAR=$BJ_YESTERDAY_YEAR" >> "$GITHUB_OUTPUT"
         echo "BJ_YESTERDAY_MONTH=$BJ_YESTERDAY_MONTH" >> "$GITHUB_OUTPUT"
         echo "BJ_YESTERDAY_DAY=$BJ_YESTERDAY_DAY" >> "$GITHUB_OUTPUT"
-        echo "BJ_YESTERDAY_YMD=$BJ_YESTERDAY_YMD" >> "$GITHUB_OUTPUT"
-        echo "UTC_YEAR=$UTC_YEAR" >> "$GITHUB_OUTPUT"
-        echo "UTC_MONTH=$UTC_MONTH" >> "$GITHUB_OUTPUT"
-        echo "UTC_DAY=$UTC_DAY" >> "$GITHUB_OUTPUT"
-        echo "UTC_YMD=$UTC_YMD" >> "$GITHUB_OUTPUT"
 
-    - name: Download configs with universal template
-      # ✅ 关键：通过 env 注入变量，使其在 Bash 中可用
+        echo "BJ_2DAYSAGO_YMD=$BJ_2DAYSAGO_YMD" >> "$GITHUB_OUTPUT"
+        echo "BJ_2DAYSAGO_YEAR=$BJ_2DAYSAGO_YEAR" >> "$GITHUB_OUTPUT"
+        echo "BJ_2DAYSAGO_MONTH=$BJ_2DAYSAGO_MONTH" >> "$GITHUB_OUTPUT"
+        echo "BJ_2DAYSAGO_DAY=$BJ_2DAYSAGO_DAY" >> "$GITHUB_OUTPUT"
+
+    - name: Download configs with date fallback and content validation
       env:
-        BJ_YEAR: ${{ steps.dates.outputs.BJ_YEAR }}
-        BJ_MONTH: ${{ steps.dates.outputs.BJ_MONTH }}
-        BJ_DAY: ${{ steps.dates.outputs.BJ_DAY }}
-        BJ_YMD: ${{ steps.dates.outputs.BJ_YMD }}
+        # Today
+        BJ_TODAY_YEAR: ${{ steps.dates.outputs.BJ_TODAY_YEAR }}
+        BJ_TODAY_MONTH: ${{ steps.dates.outputs.BJ_TODAY_MONTH }}
+        BJ_TODAY_DAY: ${{ steps.dates.outputs.BJ_TODAY_DAY }}
+        BJ_TODAY_YMD: ${{ steps.dates.outputs.BJ_TODAY_YMD }}
+        # Yesterday
         BJ_YESTERDAY_YEAR: ${{ steps.dates.outputs.BJ_YESTERDAY_YEAR }}
         BJ_YESTERDAY_MONTH: ${{ steps.dates.outputs.BJ_YESTERDAY_MONTH }}
         BJ_YESTERDAY_DAY: ${{ steps.dates.outputs.BJ_YESTERDAY_DAY }}
         BJ_YESTERDAY_YMD: ${{ steps.dates.outputs.BJ_YESTERDAY_YMD }}
-        UTC_YEAR: ${{ steps.dates.outputs.UTC_YEAR }}
-        UTC_MONTH: ${{ steps.dates.outputs.UTC_MONTH }}
-        UTC_DAY: ${{ steps.dates.outputs.UTC_DAY }}
-        UTC_YMD: ${{ steps.dates.outputs.UTC_YMD }}
+        # 2 Days Ago
+        BJ_2DAYSAGO_YEAR: ${{ steps.dates.outputs.BJ_2DAYSAGO_YEAR }}
+        BJ_2DAYSAGO_MONTH: ${{ steps.dates.outputs.BJ_2DAYSAGO_MONTH }}
+        BJ_2DAYSAGO_DAY: ${{ steps.dates.outputs.BJ_2DAYSAGO_DAY }}
+        BJ_2DAYSAGO_YMD: ${{ steps.dates.outputs.BJ_2DAYSAGO_YMD }}
       run: |
-        echo "🔍 Debug: Today (Beijing) = $BJ_YEAR-$BJ_MONTH-$BJ_DAY ($BJ_YMD)"
-        echo "🔍 Debug: Yesterday (Beijing) = $BJ_YESTERDAY_YEAR-$BJ_YESTERDAY_MONTH-$BJ_YESTERDAY_DAY"
+        echo "📅 Beijing Today: $BJ_TODAY_YEAR-$BJ_TODAY_MONTH-$BJ_TODAY_DAY"
+        echo "📅 Beijing Yesterday: $BJ_YESTERDAY_YEAR-$BJ_YESTERDAY_MONTH-$BJ_YESTERDAY_DAY"
+        echo "📅 Beijing 2 Days Ago: $BJ_2DAYSAGO_YEAR-$BJ_2DAYSAGO_MONTH-$BJ_2DAYSAGO_DAY"
 
         CONFIG_LIST=(
+          # Standard sources (freeclashnode)
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/0-{{ymd}}.yaml;freeclashnode-0_latest.yaml"
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/1-{{ymd}}.yaml;freeclashnode-1_latest.yaml"
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/2-{{ymd}}.yaml;freeclashnode-2_latest.yaml"
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/3-{{ymd}}.yaml;freeclashnode-3_latest.yaml"
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/4-{{ymd}}.yaml;freeclashnode-4_latest.yaml"
-          "https://mm.mibei77.com/{{year}}.{{month}}/{{day}}.{{month}}Clashikf.yaml;mibei77_latest.yaml"
+
+          # Special source: mibei77.com → uses MONTH.DAY format (e.g., 12.01Clashikf.yaml)
+          "https://mm.mibei77.com/{{year}}.{{month}}/{{month}}.{{day}}Clashikf.yaml;mibei77_latest.yaml"
         )
 
         DATE_FALLBACK=(
-          "bj_today"
-          "bj_yesterday"
-          "utc_today"
+          "today"
+          "yesterday"
+          "two_days_ago"
         )
 
         for config in "${CONFIG_LIST[@]}"; do
           IFS=';' read -r URL_TEMPLATE OUTPUT_NAME <<< "$config"
-          rm -f "$OUTPUT_NAME"  # Clean previous
+          rm -f "$OUTPUT_NAME"
           downloaded=false
+
+          echo "🔍 Processing $OUTPUT_NAME..."
 
           for date_key in "${DATE_FALLBACK[@]}"; do
             case "$date_key" in
-              "bj_today")
-                Y="$BJ_YEAR"; M="$BJ_MONTH"; D="$BJ_DAY"; YMD="$BJ_YMD"
+              "today")
+                Y="$BJ_TODAY_YEAR"; M="$BJ_TODAY_MONTH"; D="$BJ_TODAY_DAY"; YMD="$BJ_TODAY_YMD"
                 ;;
-              "bj_yesterday")
+              "yesterday")
                 Y="$BJ_YESTERDAY_YEAR"; M="$BJ_YESTERDAY_MONTH"; D="$BJ_YESTERDAY_DAY"; YMD="$BJ_YESTERDAY_YMD"
                 ;;
-              "utc_today")
-                Y="$UTC_YEAR"; M="$UTC_MONTH"; D="$UTC_DAY"; YMD="$UTC_YMD"
+              "two_days_ago")
+                Y="$BJ_2DAYSAGO_YEAR"; M="$BJ_2DAYSAGO_MONTH"; D="$BJ_2DAYSAGO_DAY"; YMD="$BJ_2DAYSAGO_YMD"
                 ;;
             esac
 
@@ -108,36 +118,56 @@ jobs:
             RENDERED_URL="${RENDERED_URL//{{ymd}}/$YMD}"
 
             echo "  → Trying: $RENDERED_URL"
-            if curl -f -L --retry 2 --retry-delay 2 --max-time 20 -o "$OUTPUT_NAME" "$RENDERED_URL"; then
-              echo "  ✅ Success: $OUTPUT_NAME"
-              downloaded=true
-              break
+
+            # Download with browser-like User-Agent (avoid anti-bot)
+            if curl -f -L -A "Mozilla/5.0 (compatible; GitHub-Actions)" \
+                    --retry 2 --retry-delay 3 --max-time 25 \
+                    -o "$OUTPUT_NAME" "$RENDERED_URL"; then
+
+              # Validate: non-empty AND contains 'proxies:' (Clash config signature)
+              if [ -s "$OUTPUT_NAME" ] && grep -q 'proxies:' "$OUTPUT_NAME"; then
+                echo "  ✅ Valid config saved: $OUTPUT_NAME (from $date_key)"
+                downloaded=true
+                break
+              else
+                echo "  ⚠️ Invalid content (empty or not a Clash config)"
+                rm -f "$OUTPUT_NAME"
+              fi
             else
-              echo "  ⚠️ Failed: HTTP error or timeout"
+              echo "  ⚠️ Download failed (HTTP error or timeout)"
             fi
           done
 
           if [ "$downloaded" = false ]; then
-            rm -f "$OUTPUT_NAME"
-            echo "::warning::All attempts failed for $OUTPUT_NAME"
+            echo "::warning::No valid config found for $OUTPUT_NAME after 3-day fallback"
           fi
         done
+
+    - name: Debug - List downloaded files
+      run: |
+        echo "📥 Downloaded files:"
+        ls -la *_latest.* 2>/dev/null || echo "No _latest files found."
 
     - name: Check for actual Git changes
       id: git_check
       run: |
         if [ -n "$(git status --porcelain)" ]; then
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "Changes detected:"
+          git status --porcelain
         else
           echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          echo "No changes to commit."
         fi
 
     - name: Commit and push changes
       if: steps.git_check.outputs.has_changes == 'true'
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        commit_message: "Bot: Daily config update (${{ steps.dates.outputs.BJ_YMD }})"
+        commit_message: "Bot: Daily config update (Beijing ${{ steps.dates.outputs.BJ_TODAY_YMD }})"
         file_pattern: '*_latest.*'
         add_options: '-A'
         token: ${{ secrets.REPO_ACCESS_TOKEN }}
         skip_dirty_check: true
+        commit_user_name: 'github-actions[bot]'
+        commit_user_email: 'github-actions[bot]@users.noreply.github.com'
