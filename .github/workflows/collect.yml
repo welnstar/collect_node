@@ -74,8 +74,14 @@ jobs:
         echo "📅 Beijing Yesterday: $BJ_YESTERDAY_YEAR-$BJ_YESTERDAY_MONTH-$BJ_YESTERDAY_DAY (YMD: $BJ_YESTERDAY_YMD)"
         echo "📅 Beijing 2 Days Ago: $BJ_2DAYSAGO_YEAR-$BJ_2DAYSAGO_MONTH-$BJ_2DAYSAGO_DAY (YMD: $BJ_2DAYSAGO_YMD)"
         echo ""
+        # 🔥 DIAGNOSTIC: Print raw environment variable
+        echo "📋 Raw CONFIG_LIST environment variable:"
+        echo "========================================"
+        printf '%s\n' "$CONFIG_LIST"
+        echo "========================================"
+        echo "CONFIG_LIST length: ${#CONFIG_LIST}"
         
-        readarray -t CONFIG_ARRAY < <(printf '%s\n' "$CONFIG_LIST")
+        readarray -t CONFIG_ARRAY <<<"$CONFIG_LIST"
 
         echo "📋 Found ${#CONFIG_ARRAY[@]} config entries:"
         for i in "${!CONFIG_ARRAY[@]}"; do
