@@ -8,6 +8,7 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+    environment: daily-config
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -73,29 +74,16 @@ jobs:
         echo "📅 Beijing Yesterday: $BJ_YESTERDAY_YEAR-$BJ_YESTERDAY_MONTH-$BJ_YESTERDAY_DAY (YMD: $BJ_YESTERDAY_YMD)"
         echo "📅 Beijing 2 Days Ago: $BJ_2DAYSAGO_YEAR-$BJ_2DAYSAGO_MONTH-$BJ_2DAYSAGO_DAY (YMD: $BJ_2DAYSAGO_YMD)"
         echo ""
-
-        CONFIG_LIST=(
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/0-{{ymd}}.yaml;freeclashnode-0_latest.yaml"
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/1-{{ymd}}.yaml;freeclashnode-1_latest.yaml"
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/2-{{ymd}}.yaml;freeclashnode-2_latest.yaml"
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/3-{{ymd}}.yaml;freeclashnode-3_latest.yaml"
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/4-{{ymd}}.yaml;freeclashnode-4_latest.yaml"
-          "https://mm.mibei77.com/{{year}}.{{month}}/{{month}}.{{day}}Clashikf.yaml;mibei77_latest.yaml"
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/0-{{ymd}}.txt;freeclashnode-0_latest.txt"
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/1-{{ymd}}.txt;freeclashnode-1_latest.txt"
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/2-{{ymd}}.txt;freeclashnode-2_latest.txt"
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/3-{{ymd}}.txt;freeclashnode-3_latest.txt"
-          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/4-{{ymd}}.txt;freeclashnode-4_latest.txt"
-          "https://mm.mibei77.com/{{year}}.{{month}}/{{month}}.{{day}}64bafgb.txt;mibei77_latest.txt"
-        )
-
+        
+        IFS=$'\n' read -rd '' -a CONFIG_ARRAY <<<"$CONFIG_LIST"$'\n'
+        
         DATE_FALLBACK=(
           "today"
           "yesterday" 
           "two_days_ago"
         )
 
-        for config in "${CONFIG_LIST[@]}"; do
+        for config in "${CONFIG_ARRAY[@]}"; do
           IFS=';' read -r URL_TEMPLATE OUTPUT_NAME <<< "$config"
           rm -f "$OUTPUT_NAME"
           downloaded=false
