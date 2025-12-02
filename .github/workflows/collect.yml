@@ -75,6 +75,7 @@ jobs:
         echo "📅 Beijing Yesterday: $BJ_YESTERDAY_YEAR-$BJ_YESTERDAY_MONTH-$BJ_YESTERDAY_DAY (YMD: $BJ_YESTERDAY_YMD)"
         echo "📅 Beijing 2 Days Ago: $BJ_2DAYSAGO_YEAR-$BJ_2DAYSAGO_MONTH-$BJ_2DAYSAGO_DAY (YMD: $BJ_2DAYSAGO_YMD)"
         echo ""
+
         # 🔥 DIAGNOSTIC: Print raw environment variable
         echo "📋 Raw CONFIG_LIST environment variable:"
         echo "========================================"
@@ -99,6 +100,7 @@ jobs:
           fi
         done
         echo ""
+
         DATE_FALLBACK=(
           "today"
           "yesterday" 
@@ -106,8 +108,14 @@ jobs:
         )
 
         for config in "${CONFIG_ARRAY[@]}"; do
+          # Skip empty lines
+          [[ -z "$config" ]] && continue
+          
           IFS=';' read -r URL_TEMPLATE OUTPUT_NAME <<< "$config"
-          rm -f "$OUTPUT_NAME"
+          
+          # Validate template and output name
+          [[ -z "$URL_TEMPLATE" || -z "$OUTPUT_NAME" ]] && continue
+
           downloaded=false
 
           echo "🔍 Processing $OUTPUT_NAME..."
@@ -151,22 +159,28 @@ jobs:
             echo "   🚀 Final URL to try: $RENDERED_URL"
             echo ""
 
+            # 🔥 Download to temporary file first
+            TEMP_FILE="${OUTPUT_NAME}.tmp"
+            
             # Download with browser-like User-Agent (avoid anti-bot)
             if curl -f -L -A "Mozilla/5.0 (compatible; GitHub-Actions)" \
                     --retry 2 --retry-delay 3 --max-time 25 \
-                    -o "$OUTPUT_NAME" "$RENDERED_URL"; then
+                    -o "$TEMP_FILE" "$RENDERED_URL"; then
 
               echo "   ✅ Download successful (HTTP 200)"
               
               # Check file content: ONLY check if non-empty
-              if [ -s "$OUTPUT_NAME" ]; then
-                echo "   📄 File size: $(stat -c%s "$OUTPUT_NAME") bytes"
-                echo "   ✅ Valid file (non-empty)"
+              if [ -s "$TEMP_FILE" ]; then
+                echo "   📄 Temp file size: $(stat -c%s "$TEMP_FILE") bytes"
+                
+                # 🔥 ONLY if temp file is valid, move it to final name (replacing old file)
+                mv "$TEMP_FILE" "$OUTPUT_NAME"
+                echo "   ✅ Valid file saved as $OUTPUT_NAME (replaced old version if existed)"
                 downloaded=true
                 break
               else
-                echo "   ⚠️  Downloaded file is empty"
-                rm -f "$OUTPUT_NAME"
+                echo "   ⚠️  Downloaded temp file is empty, keeping old file"
+                rm -f "$TEMP_FILE"
               fi
             else
               echo "   ❌ Download failed (HTTP error or timeout)"
@@ -182,6 +196,7 @@ jobs:
 
           if [ "$downloaded" = false ]; then
             echo "::warning::No valid config found for $OUTPUT_NAME after 3-day fallback"
+            # If no new file was downloaded successfully, old file (if any) is preserved
           else
             echo "   🎉 Successfully downloaded $OUTPUT_NAME"
           fi
@@ -193,16 +208,24 @@ jobs:
         echo "📥 Downloaded files:"
         ls -la *_latest.* 2>/dev/null || echo "No _latest files found."
 
-    - name: Check for actual Git changes
+    - name: Check for actual Git changes (improved)
       id: git_check
       run: |
-        if [ -n "$(git status --porcelain)" ]; then
-          echo "has_changes=true" >> "$GITHUB_OUTPUT"
-          echo "Changes detected:"
-          git status --porcelain
-        else
+        # Check if there are any changes in *_latest.* files
+        if git diff --quiet HEAD -- *_latest.* 2>/dev/null; then
+          # No changes in the files we care about
           echo "has_changes=false" >> "$GITHUB_OUTPUT"
-          echo "No changes to commit."
+          echo "Files exist but content unchanged. No commit needed."
+        else
+          # There are changes in *_latest.* files
+          if ls *_latest.* 1> /dev/null 2>&1; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "Changes detected in config files:"
+            git status --porcelain -- *_latest.*
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No config files to commit."
+          fi
         fi
 
     - name: Commit and push changes
