@@ -51,7 +51,7 @@ jobs:
         echo "BJ_2DAYSAGO_MONTH=$BJ_2DAYSAGO_MONTH" >> "$GITHUB_OUTPUT"
         echo "BJ_2DAYSAGO_DAY=$BJ_2DAYSAGO_DAY" >> "$GITHUB_OUTPUT"
 
-    - name: Download configs with date fallback and content validation
+    - name: Download configs with FULL URL debugging
       env:
         # Today
         BJ_TODAY_YEAR: ${{ steps.dates.outputs.BJ_TODAY_YEAR }}
@@ -69,25 +69,23 @@ jobs:
         BJ_2DAYSAGO_DAY: ${{ steps.dates.outputs.BJ_2DAYSAGO_DAY }}
         BJ_2DAYSAGO_YMD: ${{ steps.dates.outputs.BJ_2DAYSAGO_YMD }}
       run: |
-        echo "📅 Beijing Today: $BJ_TODAY_YEAR-$BJ_TODAY_MONTH-$BJ_TODAY_DAY"
-        echo "📅 Beijing Yesterday: $BJ_YESTERDAY_YEAR-$BJ_YESTERDAY_MONTH-$BJ_YESTERDAY_DAY"
-        echo "📅 Beijing 2 Days Ago: $BJ_2DAYSAGO_YEAR-$BJ_2DAYSAGO_MONTH-$BJ_2DAYSAGO_DAY"
+        echo "📅 Beijing Today: $BJ_TODAY_YEAR-$BJ_TODAY_MONTH-$BJ_TODAY_DAY (YMD: $BJ_TODAY_YMD)"
+        echo "📅 Beijing Yesterday: $BJ_YESTERDAY_YEAR-$BJ_YESTERDAY_MONTH-$BJ_YESTERDAY_DAY (YMD: $BJ_YESTERDAY_YMD)"
+        echo "📅 Beijing 2 Days Ago: $BJ_2DAYSAGO_YEAR-$BJ_2DAYSAGO_MONTH-$BJ_2DAYSAGO_DAY (YMD: $BJ_2DAYSAGO_YMD)"
+        echo ""
 
         CONFIG_LIST=(
-          # Standard sources (freeclashnode)
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/0-{{ymd}}.yaml;freeclashnode-0_latest.yaml"
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/1-{{ymd}}.yaml;freeclashnode-1_latest.yaml"
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/2-{{ymd}}.yaml;freeclashnode-2_latest.yaml"
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/3-{{ymd}}.yaml;freeclashnode-3_latest.yaml"
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/4-{{ymd}}.yaml;freeclashnode-4_latest.yaml"
-
-          # Special source: mibei77.com → uses MONTH.DAY format (e.g., 12.01Clashikf.yaml)
           "https://mm.mibei77.com/{{year}}.{{month}}/{{month}}.{{day}}Clashikf.yaml;mibei77_latest.yaml"
         )
 
         DATE_FALLBACK=(
           "today"
-          "yesterday"
+          "yesterday" 
           "two_days_ago"
         )
 
@@ -97,50 +95,85 @@ jobs:
           downloaded=false
 
           echo "🔍 Processing $OUTPUT_NAME..."
+          echo "   Template: $URL_TEMPLATE"
 
           for date_key in "${DATE_FALLBACK[@]}"; do
             case "$date_key" in
               "today")
                 Y="$BJ_TODAY_YEAR"; M="$BJ_TODAY_MONTH"; D="$BJ_TODAY_DAY"; YMD="$BJ_TODAY_YMD"
+                DATE_DESC="Beijing Today"
                 ;;
               "yesterday")
                 Y="$BJ_YESTERDAY_YEAR"; M="$BJ_YESTERDAY_MONTH"; D="$BJ_YESTERDAY_DAY"; YMD="$BJ_YESTERDAY_YMD"
+                DATE_DESC="Beijing Yesterday"
                 ;;
               "two_days_ago")
                 Y="$BJ_2DAYSAGO_YEAR"; M="$BJ_2DAYSAGO_MONTH"; D="$BJ_2DAYSAGO_DAY"; YMD="$BJ_2DAYSAGO_YMD"
+                DATE_DESC="Beijing 2 Days Ago"
                 ;;
             esac
 
+            # Debug: Show what variables are being used
+            echo "   Using: year=$Y, month=$M, day=$D, ymd=$YMD (from $DATE_DESC)"
+
+            # Render URL step by step
             RENDERED_URL="$URL_TEMPLATE"
+            echo "   Before replace: $RENDERED_URL"
+            
             RENDERED_URL="${RENDERED_URL//{{year}}/$Y}"
+            echo "   After year: $RENDERED_URL"
+            
             RENDERED_URL="${RENDERED_URL//{{month}}/$M}"
+            echo "   After month: $RENDERED_URL"
+            
             RENDERED_URL="${RENDERED_URL//{{day}}/$D}"
+            echo "   After day: $RENDERED_URL"
+            
             RENDERED_URL="${RENDERED_URL//{{ymd}}/$YMD}"
+            echo "   After ymd: $RENDERED_URL"
+            
+            echo "   🚀 Final URL to try: $RENDERED_URL"
+            echo ""
 
-            echo "  → Trying: $RENDERED_URL"
-
-            # Download with browser-like User-Agent (avoid anti-bot)
+            # Try to download
             if curl -f -L -A "Mozilla/5.0 (compatible; GitHub-Actions)" \
                     --retry 2 --retry-delay 3 --max-time 25 \
                     -o "$OUTPUT_NAME" "$RENDERED_URL"; then
 
-              # Validate: non-empty AND contains 'proxies:' (Clash config signature)
-              if [ -s "$OUTPUT_NAME" ] && grep -q 'proxies:' "$OUTPUT_NAME"; then
-                echo "  ✅ Valid config saved: $OUTPUT_NAME (from $date_key)"
-                downloaded=true
-                break
+              echo "   ✅ Download successful (HTTP 200)"
+              
+              # Check file content
+              if [ -s "$OUTPUT_NAME" ]; then
+                echo "   📄 File size: $(stat -c%s "$OUTPUT_NAME") bytes"
+                
+                # Check if it contains proxies (Clash config)
+                if grep -q 'proxies:' "$OUTPUT_NAME"; then
+                  echo "   ✅ Valid Clash config (contains 'proxies:')"
+                  downloaded=true
+                  break
+                else
+                  echo "   ⚠️  File doesn't contain 'proxies:', checking content:"
+                  head -n 10 "$OUTPUT_NAME"
+                  rm -f "$OUTPUT_NAME"
+                fi
               else
-                echo "  ⚠️ Invalid content (empty or not a Clash config)"
+                echo "   ⚠️  Downloaded file is empty"
                 rm -f "$OUTPUT_NAME"
               fi
             else
-              echo "  ⚠️ Download failed (HTTP error or timeout)"
+              echo "   ❌ Download failed (HTTP error or timeout)"
+              # Try to see what the server returned (if any)
+              curl -I -L -A "Mozilla/5.0 (compatible; GitHub-Actions)" "$RENDERED_URL" || echo "   (Failed to get headers)"
+              echo ""
             fi
           done
 
           if [ "$downloaded" = false ]; then
             echo "::warning::No valid config found for $OUTPUT_NAME after 3-day fallback"
+          else
+            echo "   🎉 Successfully downloaded $OUTPUT_NAME"
           fi
+          echo "   ----------------------------------------"
         done
 
     - name: Debug - List downloaded files
@@ -170,4 +203,4 @@ jobs:
         token: ${{ secrets.REPO_ACCESS_TOKEN }}
         skip_dirty_check: true
         commit_user_name: 'github-actions[bot]'
-        commit_user_email: 'github-actions[bot]@users.noreply.github.com'
+        commit_user_email: 'github-actions[bot]@users.nore
