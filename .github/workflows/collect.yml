@@ -75,8 +75,7 @@ jobs:
         echo "📅 Beijing 2 Days Ago: $BJ_2DAYSAGO_YEAR-$BJ_2DAYSAGO_MONTH-$BJ_2DAYSAGO_DAY (YMD: $BJ_2DAYSAGO_YMD)"
         echo ""
         
-        IFS=$'\n' read -rd '' -a CONFIG_ARRAY <<<"$CONFIG_LIST"$'\n'
-        
+        readarray -t CONFIG_ARRAY <<<"$CONFIG_LIST"        
         DATE_FALLBACK=(
           "today"
           "yesterday" 
