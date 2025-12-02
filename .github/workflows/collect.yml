@@ -2,7 +2,7 @@ name: Daily Multi-Config Update
 
 on:
   schedule:
-    - cron: '10 0 * * *'  # 每天 UTC 00:10 运行（北京时间 08:10，确保源站已更新）
+    - cron: '10 0 * * *'  # 每天 UTC 00:10（北京时间 08:10）
   workflow_dispatch:  # 允许手动触发
 
 jobs:
@@ -14,60 +14,119 @@ jobs:
       with:
         token: ${{ secrets.REPO_ACCESS_TOKEN }}
 
-    - name: Generate date candidates (UTC and Beijing)
+    - name: Generate date contexts (UTC and Beijing)
       id: dates
       run: |
         # UTC 日期
-        UTC_TODAY=$(date -u +%Y%m%d)
-        UTC_YESTERDAY=$(date -u -d '1 day ago' +%Y%m%d)
-        
-        # 北京时间（UTC+8）日期
-        BJ_TODAY=$(date -u -d '+8 hours' +%Y%m%d)
-        BJ_YESTERDAY=$(date -u -d '+8 hours -1 day' +%Y%m%d)
-        
-        # 按优先级排序：先试北京时间今天，再昨天，再 UTC 今天（适应中国源站）
-        echo "DATE_LIST=${BJ_TODAY},${BJ_YESTERDAY},${UTC_TODAY},${UTC_YESTERDAY}" >> "$GITHUB_OUTPUT"
+        UTC_YEAR=$(date -u +%Y)
+        UTC_MONTH=$(date -u +%m)
+        UTC_DAY=$(date -u +%d)
+        UTC_YMD=$(date -u +%Y%m%d)
 
-    - name: Download configs with date fallback
+        # 北京时间（UTC+8）
+        BJ_YEAR=$(date -u -d '+8 hours' +%Y)
+        BJ_MONTH=$(date -u -d '+8 hours' +%m)
+        BJ_DAY=$(date -u -d '+8 hours' +%d)
+        BJ_YMD=$(date -u -d '+8 hours' +%Y%m%d)
+
+        # 昨天（北京时间）
+        BJ_YESTERDAY_YMD=$(date -u -d '+8 hours -1 day' +%Y%m%d)
+        BJ_YESTERDAY_YEAR=$(date -u -d '+8 hours -1 day' +%Y)
+        BJ_YESTERDAY_MONTH=$(date -u -d '+8 hours -1 day' +%m)
+        BJ_YESTERDAY_DAY=$(date -u -d '+8 hours -1 day' +%d)
+
+        # 输出所有日期上下文（YMD 用于旧格式，分量用于新模板）
+        echo "BJ_TODAY_YMD=$BJ_YMD" >> "$GITHUB_OUTPUT"
+        echo "BJ_YESTERDAY_YMD=$BJ_YESTERDAY_YMD" >> "$GITHUB_OUTPUT"
+        echo "UTC_TODAY_YMD=$UTC_YMD" >> "$GITHUB_OUTPUT"
+
+        # 北京时间分量（用于模板）
+        echo "BJ_YEAR=$BJ_YEAR" >> "$GITHUB_OUTPUT"
+        echo "BJ_MONTH=$BJ_MONTH" >> "$GITHUB_OUTPUT"
+        echo "BJ_DAY=$BJ_DAY" >> "$GITHUB_OUTPUT"
+        echo "BJ_YESTERDAY_YEAR=$BJ_YESTERDAY_YEAR" >> "$GITHUB_OUTPUT"
+        echo "BJ_YESTERDAY_MONTH=$BJ_YESTERDAY_MONTH" >> "$GITHUB_OUTPUT"
+        echo "BJ_YESTERDAY_DAY=$BJ_YESTERDAY_DAY" >> "$GITHUB_OUTPUT"
+
+    - name: Download configs with universal template support
       run: |
+        # ========== 配置格式说明 ==========
+        # 每行格式: "URL_TEMPLATE;OUTPUT_NAME;MODE"
+        # - MODE = "LEGACY" : 使用 YMD 日期（如 20251202），用于 freeclashnode
+        # - MODE = "TEMPLATE" : 使用 {{year}}, {{month}}, {{day}} 模板，用于 mibei77 等
+        #
+        # 注意：LEGACY 模式仍支持日期回退（通过 YMD 列表）
+
         CONFIG_LIST=(
-          "https://node.freeclashnode.com/uploads;0-;.yaml;freeclashnode-0_latest.yaml"
-          "https://node.freeclashnode.com/uploads;1-;.yaml;freeclashnode-1_latest.yaml"
-          "https://node.freeclashnode.com/uploads;2-;.yaml;freeclashnode-2_latest.yaml"
-          "https://node.freeclashnode.com/uploads;3-;.yaml;freeclashnode-3_latest.yaml"
-          "https://node.freeclashnode.com/uploads;4-;.yaml;freeclashnode-4_latest.yaml"
-  
-          # 可在此添加更多配置...
+          # --- 标准源（freeclashnode）---
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/0-{{ymd}}.yaml;freeclashnode-0_latest.yaml;TEMPLATE"
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/1-{{ymd}}.yaml;freeclashnode-1_latest.yaml;TEMPLATE"
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/2-{{ymd}}.yaml;freeclashnode-2_latest.yaml;TEMPLATE"
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/3-{{ymd}}.yaml;freeclashnode-3_latest.yaml;TEMPLATE"
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/4-{{ymd}}.yaml;freeclashnode-4_latest.yaml;TEMPLATE"
+
+          # --- 特殊源（mibei77）---
+          "https://mm.mibei77.com/{{year}}.{{month}}/{{day}}.{{month}}Clashikf.yaml;mibei77_latest.yaml;TEMPLATE"
+
+          # --- 你可以继续添加更多 ---
+          # "https://example.com/{{year}}/{{month}}/{{day}}/config.yaml;example_latest.yaml;TEMPLATE"
         )
 
-        # 读取日期候选列表
-        IFS=',' read -r -a DATES <<< "${{ steps.dates.outputs.DATE_LIST }}"
+        # 日期回退序列（按优先级）
+        DATE_FALLBACK=(
+          "bj_today"
+          "bj_yesterday"
+          "utc_today"
+        )
 
         for config in "${CONFIG_LIST[@]}"; do
-          IFS=';' read -r BASE_URL PREFIX SUFFIX OUTPUT_NAME <<< "$config"
+          IFS=';' read -r URL_TEMPLATE OUTPUT_NAME MODE <<< "$config"
           downloaded=false
 
-          echo "🔍 Processing $OUTPUT_NAME..."
+          echo "🔍 Processing $OUTPUT_NAME (mode: $MODE)..."
 
-          for try_date in "${DATES[@]}"; do
-            YEAR=${try_date:0:4}
-            MONTH=${try_date:4:2}
-            FULL_URL="${BASE_URL}/${YEAR}/${MONTH}/${PREFIX}${try_date}${SUFFIX}"
+          for date_key in "${DATE_FALLBACK[@]}"; do
+            case "$date_key" in
+              "bj_today")
+                Y=${{ steps.dates.outputs.BJ_YEAR }}
+                M=${{ steps.dates.outputs.BJ_MONTH }}
+                D=${{ steps.dates.outputs.BJ_DAY }}
+                YMD=${{ steps.dates.outputs.BJ_TODAY_YMD }}
+                ;;
+              "bj_yesterday")
+                Y=${{ steps.dates.outputs.BJ_YESTERDAY_YEAR }}
+                M=${{ steps.dates.outputs.BJ_YESTERDAY_MONTH }}
+                D=${{ steps.dates.outputs.BJ_YESTERDAY_DAY }}
+                YMD=${{ steps.dates.outputs.BJ_YESTERDAY_YMD }}
+                ;;
+              "utc_today")
+                Y=${{ steps.dates.outputs.UTC_YEAR }}
+                M=${{ steps.dates.outputs.UTC_MONTH }}
+                D=${{ steps.dates.outputs.UTC_DAY }}
+                YMD=${{ steps.dates.outputs.UTC_TODAY_YMD }}
+                ;;
+            esac
 
-            echo "  → Trying: $FULL_URL"
+            # 渲染模板：替换 {{year}}, {{month}}, {{day}}, {{ymd}}
+            RENDERED_URL="$URL_TEMPLATE"
+            RENDERED_URL="${RENDERED_URL//{{year}}/$Y}"
+            RENDERED_URL="${RENDERED_URL//{{month}}/$M}"
+            RENDERED_URL="${RENDERED_URL//{{day}}/$D}"
+            RENDERED_URL="${RENDERED_URL//{{ymd}}/$YMD}"
 
-            if curl -f -L --retry 2 --retry-delay 3 --max-time 25 -o "${OUTPUT_NAME}" "${FULL_URL}"; then
-              echo "  ✅ Success! Saved as $OUTPUT_NAME (date: $try_date)"
+            echo "  → Trying: $RENDERED_URL"
+
+            if curl -f -L --retry 2 --retry-delay 3 --max-time 25 -o "$OUTPUT_NAME" "$RENDERED_URL"; then
+              echo "  ✅ Success! Saved as $OUTPUT_NAME (date key: $date_key)"
               downloaded=true
               break
             else
-              echo "  ⚠️  Failed: $FULL_URL"
+              echo "  ⚠️ Failed: $RENDERED_URL"
             fi
           done
 
           if [ "$downloaded" = false ]; then
-            echo "::warning::All date attempts failed for $OUTPUT_NAME. Skipping."
-            # 不创建空文件，避免污染仓库
+            echo "::warning::All attempts failed for $OUTPUT_NAME"
           fi
         done
 
@@ -80,11 +139,14 @@ jobs:
           echo "has_files=false" >> "$GITHUB_OUTPUT"
         fi
 
-    - name: Commit and push (only if files exist)
+    - name: Commit and push changes
       if: steps.check.outputs.has_files == 'true'
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: "Bot: Daily config update ($(date -u +%Y%m%d))"
         file_pattern: '*_latest.*'
+        add_options: '-A'                 # ← 关键！支持新增文件
         token: ${{ secrets.REPO_ACCESS_TOKEN }}
-        skip_dirty_check: true  # 防止因换行符等问题报错
+        skip_dirty_check: true
+        commit_user_name: 'github-actions[bot]'
+        commit_user_email: 'github-actions[bot]@users.noreply.github.com'
