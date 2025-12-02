@@ -162,8 +162,12 @@ jobs:
               fi
             else
               echo "   ❌ Download failed (HTTP error or timeout)"
-              # Try to see what the server returned (if any)
-              curl -I -L -A "Mozilla/5.0 (compatible; GitHub-Actions)" "$RENDERED_URL" || echo "   (Failed to get headers)"
+              # Try to get headers to see what happened
+              if [ -n "$RENDERED_URL" ]; then
+                curl -f -s -I -L -A "Mozilla/5.0 (compatible; GitHub-Actions)" "$RENDERED_URL" 2>/dev/null | head -n 5 || echo "   (Failed to get headers)"
+              else
+                echo "   (RENDERED_URL is empty)"
+              fi
               echo ""
             fi
           done
@@ -203,4 +207,4 @@ jobs:
         token: ${{ secrets.REPO_ACCESS_TOKEN }}
         skip_dirty_check: true
         commit_user_name: 'github-actions[bot]'
-        commit_user_email: 'github-actions[bot]@users.nore
+        commit_user_email: 'github-actions[bot]@users.noreply.github.com'
