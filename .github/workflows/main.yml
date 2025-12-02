@@ -6,10 +6,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # 🔥 在这里指定你的 Environment 名称
-    environment: daily-config  # ← 确保这个名称与 GitHub 中的 Environment 名称完全一致
+    environment: daily-config  # ← 你的 Environment 名称
     steps:
     - name: Check Environment Variables
+      # 🔥 使用 vars. 语法引用 Environment 变量
+      env:
+        CONFIG_LIST: ${{ vars.CONFIG_LIST }}
       run: |
         echo "🔍 Testing Environment Variable Access"
         echo "====================================="
@@ -40,14 +42,6 @@ jobs:
         # 检查 Environment 信息
         echo "📋 Environment Info:"
         echo "GITHUB_ENVIRONMENT: $GITHUB_ENVIRONMENT"
-        echo "Environment context is: ${{ github.event.inputs.environment || 'not set' }}"
-        
-        echo ""
-        # 测试其他可能的变量名
-        echo "📋 Testing common variations:"
-        echo "CONFIG_LIST length: ${#CONFIG_LIST}"
-        echo "config_list length: ${#config_list}"
-        echo "Config_List length: ${#Config_List}"
         
         echo ""
         # 尝试解析为数组
