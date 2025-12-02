@@ -51,7 +51,7 @@ jobs:
         echo "BJ_2DAYSAGO_MONTH=$BJ_2DAYSAGO_MONTH" >> "$GITHUB_OUTPUT"
         echo "BJ_2DAYSAGO_DAY=$BJ_2DAYSAGO_DAY" >> "$GITHUB_OUTPUT"
 
-    - name: Download configs with FULL URL debugging
+    - name: Download configs with safe URL replacement (using sed)
       env:
         # Today
         BJ_TODAY_YEAR: ${{ steps.dates.outputs.BJ_TODAY_YEAR }}
@@ -116,26 +116,26 @@ jobs:
             # Debug: Show what variables are being used
             echo "   Using: year=$Y, month=$M, day=$D, ymd=$YMD (from $DATE_DESC)"
 
-            # Render URL step by step
+            # 🔥 SAFE URL RENDERING: Use sed to avoid Bash parameter expansion issues with '/'
             RENDERED_URL="$URL_TEMPLATE"
             echo "   Before replace: $RENDERED_URL"
             
-            RENDERED_URL="${RENDERED_URL//{{year}}/$Y}"
+            RENDERED_URL=$(echo "$RENDERED_URL" | sed "s|{{year}}|$Y|g")
             echo "   After year: $RENDERED_URL"
             
-            RENDERED_URL="${RENDERED_URL//{{month}}/$M}"
+            RENDERED_URL=$(echo "$RENDERED_URL" | sed "s|{{month}}|$M|g")
             echo "   After month: $RENDERED_URL"
             
-            RENDERED_URL="${RENDERED_URL//{{day}}/$D}"
+            RENDERED_URL=$(echo "$RENDERED_URL" | sed "s|{{day}}|$D|g")
             echo "   After day: $RENDERED_URL"
             
-            RENDERED_URL="${RENDERED_URL//{{ymd}}/$YMD}"
+            RENDERED_URL=$(echo "$RENDERED_URL" | sed "s|{{ymd}}|$YMD|g")
             echo "   After ymd: $RENDERED_URL"
             
             echo "   🚀 Final URL to try: $RENDERED_URL"
             echo ""
 
-            # Try to download
+            # Download with browser-like User-Agent (avoid anti-bot)
             if curl -f -L -A "Mozilla/5.0 (compatible; GitHub-Actions)" \
                     --retry 2 --retry-delay 3 --max-time 25 \
                     -o "$OUTPUT_NAME" "$RENDERED_URL"; then
