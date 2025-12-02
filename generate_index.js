@@ -52,7 +52,7 @@ files.forEach(file => {
 });
 
 html += `  </ul>
-  <p><small>更新时间: ${new Date().toLocaleString('zh-CN')}</small></p>
+  <p><small>文件列表由自动化脚本生成</small></p>
 </body>
 </html>`;
 
