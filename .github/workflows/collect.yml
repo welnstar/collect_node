@@ -81,6 +81,12 @@ jobs:
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/3-{{ymd}}.yaml;freeclashnode-3_latest.yaml"
           "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/4-{{ymd}}.yaml;freeclashnode-4_latest.yaml"
           "https://mm.mibei77.com/{{year}}.{{month}}/{{month}}.{{day}}Clashikf.yaml;mibei77_latest.yaml"
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/0-{{ymd}}.txt;freeclashnode-0_latest.txt"
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/1-{{ymd}}.txt;freeclashnode-1_latest.txt"
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/2-{{ymd}}.txt;freeclashnode-2_latest.txt"
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/3-{{ymd}}.txt;freeclashnode-3_latest.txt"
+          "https://node.freeclashnode.com/uploads/{{year}}/{{month}}/4-{{ymd}}.txt;freeclashnode-4_latest.txt"
+          "https://mm.mibei77.com/{{year}}.{{month}}/{{month}}.{{day}}64bafgb.txt;mibei77_latest.txt"
         )
 
         DATE_FALLBACK=(
