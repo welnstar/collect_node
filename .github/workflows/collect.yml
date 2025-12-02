@@ -54,6 +54,7 @@ jobs:
 
     - name: Download configs with safe URL replacement (using sed)
       env:
+        CONFIG_LIST: ${{ vars.CONFIG_LIST }}
         # Today
         BJ_TODAY_YEAR: ${{ steps.dates.outputs.BJ_TODAY_YEAR }}
         BJ_TODAY_MONTH: ${{ steps.dates.outputs.BJ_TODAY_MONTH }}
