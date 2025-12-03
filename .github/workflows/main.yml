@@ -19,12 +19,12 @@ jobs:
       - name: Generate index.html
         run: node generate_index.js
 
-      - name: Debug: List all yml/yaml files
+      - name: Debug List all yml yaml files
         run: |
           echo "=== All .yml/.yaml files in repo ==="
           find . -type f \( -iname "*.yml" -o -iname "*.yaml" \) | sort
 
-      - name: Debug: Show generated file list count
+      - name: Debug Show generated file list count
         run: |
           if [ -f index.html ]; then
             echo "✅ index.html exists"
