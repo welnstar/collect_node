@@ -1,57 +1,41 @@
-name: Test Environment Variable
+# .github/workflows/build-index.yml
+name: Generate Index
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-    environment: daily-config  # ← 你的 Environment 名称
     steps:
-    - name: Check Environment Variables
-      # 🔥 使用 vars. 语法引用 Environment 变量
-      env:
-        CONFIG_LIST: ${{ vars.CONFIG_LIST }}
-      run: |
-        echo "🔍 Testing Environment Variable Access"
-        echo "====================================="
-        
-        # 检查所有包含 CONFIG 的环境变量
-        echo "📋 All environment variables containing 'CONFIG':"
-        env | grep -i config || echo "❌ No CONFIG variables found"
-        
-        echo ""
-        # 直接输出 CONFIG_LIST
-        echo "📋 CONFIG_LIST value:"
-        echo "----------------------"
-        if [[ -z "$CONFIG_LIST" ]]; then
-          echo "❌ CONFIG_LIST is EMPTY!"
-          echo "Possible reasons:"
-          echo "  1. Environment name in YAML doesn't match GitHub"
-          echo "  2. CONFIG_LIST variable doesn't exist in that Environment"
-          echo "  3. Variable name is misspelled"
-          echo "  4. Current branch doesn't have access to this Environment"
-        else
-          echo "✅ CONFIG_LIST has content (length: ${#CONFIG_LIST})"
-          echo "$CONFIG_LIST"
-          echo "----------------------"
-          echo "Number of lines: $(echo "$CONFIG_LIST" | wc -l)"
-        fi
-        
-        echo ""
-        # 检查 Environment 信息
-        echo "📋 Environment Info:"
-        echo "GITHUB_ENVIRONMENT: $GITHUB_ENVIRONMENT"
-        
-        echo ""
-        # 尝试解析为数组
-        if [[ -n "$CONFIG_LIST" ]]; then
-          echo "📋 Attempting to parse as array:"
-          readarray -t CONFIG_ARRAY <<<"$CONFIG_LIST"
-          echo "Array has ${#CONFIG_ARRAY[@]} elements:"
-          for i in "${!CONFIG_ARRAY[@]}"; do
-            if [[ -n "${CONFIG_ARRAY[$i]}" ]]; then
-              echo "  [$i]: [${CONFIG_ARRAY[$i]}]"
-            fi
-          done
-        fi
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate index.html
+        run: node generate_index.js
+
+      - name: Debug: List all yml/yaml files
+        run: |
+          echo "=== All .yml/.yaml files in repo ==="
+          find . -type f \( -iname "*.yml" -o -iname "*.yaml" \) | sort
+
+      - name: Debug: Show generated file list count
+        run: |
+          if [ -f index.html ]; then
+            echo "✅ index.html exists"
+            grep -o 'href="' index.html | wc -l | xargs echo "🔗 Links found:"
+          else
+            echo "❌ index.html NOT generated"
+          fi
+
+      # 可选：上传 index.html 作为 artifact 便于检查
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: index-html
+          path: index.html
