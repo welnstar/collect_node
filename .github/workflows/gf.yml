@@ -45,30 +45,22 @@ jobs:
             <h1>Latest Files Index</h1>
             <div id="files">
           EOF
-          
-          # 获取所有匹配的文件
-          for file in *_latest.txt *_latest.yaml *_latest.yml; do
+
+          # 使用更通用的通配符，并打印文件名
+          echo "=== Matching files for *_latest.* ==="
+          for file in *_latest.*; do
             if [ -f "$file" ]; then
-              echo "<div class='file'><span class='filename'>$file</span></div>" >> index.html
+              echo "Found: $file"  # 打印文件名（Action 日志中可见）
+              echo "<div class='file'><span class='ofile'>$file</span></div>" >> index.html
             fi
           done
-          
-          cat >> index.html << 'EOF'
+
+          # 如果没有任何匹配文件，避免 shell 报错（set -e 默认启用）
+          # 上述写法已安全处理
+
+          cat >> index.html << EOF
             </div>
             <p>Generated on: $(date)</p>
           </body>
           </html>
           EOF
-          
-      - name: Commit and push if changed
-        run: |
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'actions@github.com'
-          git add index.html stats.json
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: auto-update latest files statistics [skip ci]"
-            git push
-          else
-            echo "No changes to index.html"
-          fi
-      
