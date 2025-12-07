@@ -246,7 +246,7 @@ jobs:
     
         for file in *_latest.*; do
           if [ -f "$file" ]; then
-            echo "<div class='file'><span class='filename'>$file</span></div>" >> index.html
+             echo "      <div class='file'><a class='filename' href='$file' download='$file'>$file</a></div>" >> index.html
           fi
         done
 
