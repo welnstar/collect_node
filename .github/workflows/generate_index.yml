@@ -3,13 +3,12 @@ name: Generate Latest Files Statistics
 on:
   push:
     branches: [ main ]
-    paths-ignore:
-      - 'stats/**'  # 排除 stats 目录，防止自循环
-      - '.github/workflows/**'  # 排除工作流文件本身的变化
     paths:
-      - '*_latest.txt'
-      - '*_latest.yaml'
-      - '*_latest.yml'
+      - '*_latest.txt'      # 根目录下的 *_latest.txt 文件
+      - '*_latest.yaml'     # 根目录下的 *_latest.yaml 文件
+      - '*_latest.yml'      # 根目录下的 *_latest.yml 文件
+      - '!.github/workflows/**'  # 排除工作流文件本身的变化
+      - '!stats/**'         # 排除 stats 目录，防止自循环
   workflow_dispatch:  # 允许手动触发
 
 jobs:
