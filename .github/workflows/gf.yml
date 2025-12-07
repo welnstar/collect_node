@@ -59,15 +59,16 @@ jobs:
           </body>
           </html>
           EOF
-
+          
       - name: Commit and push if changed
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add index.html
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git add index.html stats.json
           if ! git diff --cached --quiet; then
-            git commit -m "Update file index [skip ci]"
+            git commit -m "chore: auto-update latest files statistics [skip ci]"
             git push
           else
             echo "No changes to index.html"
           fi
+      
