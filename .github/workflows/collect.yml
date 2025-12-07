@@ -244,7 +244,7 @@ jobs:
           <div id="files">
         EOF
     
-        for file in *_latest.txt *_latest.yaml *_latest.yml; do
+        for file in *_latest.*; do
           if [ -f "$file" ]; then
             echo "<div class='file'><span class='filename'>$file</span></div>" >> index.html
           fi
