@@ -11,7 +11,6 @@ import json
 from datetime import datetime
 from pathlib import Path
 import hashlib
-import subprocess
 
 def find_latest_files(root_dir):
     """查找根目录下的所有 *_latest.txt 和 *_latest.yaml 文件"""
@@ -130,20 +129,19 @@ def format_size(size_bytes):
     return f"{size_bytes:.2f} {size_names[i]}"
 
 def get_git_info():
-    """获取 Git 信息"""
+    """获取 Git 信息 - 安全版本，避免 Git 错误"""
     try:
-        # 获取当前提交哈希
-        commit_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
-        # 获取当前分支
-        branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('utf-8').strip()
-        # 获取提交信息
-        commit_message = subprocess.check_output(['git', 'log', '-1', '--pretty=%B']).decode('utf-8').strip()
+        # 尝试从环境变量获取信息
+        commit_hash = os.environ.get('GITHUB_SHA', 'unknown')[:8]
+        branch = os.environ.get('GITHUB_REF_NAME', 'main')
+        commit_message = os.environ.get('GITHUB_EVENT_NAME', 'N/A')
         return {
-            'commit_hash': commit_hash[:8],  # 取前8位
+            'commit_hash': commit_hash,
             'branch': branch,
             'commit_message': commit_message
         }
     except:
+        # 如果环境变量不可用，使用默认值
         return {
             'commit_hash': 'unknown',
             'branch': os.environ.get('GITHUB_REF_NAME', 'main'),
@@ -298,8 +296,7 @@ def generate_html_report(stats_data, output_dir):
         <p class="timestamp">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
         <div class="git-info">
             <strong>Git Info:</strong> Branch: {git_info['branch']} | 
-            Commit: {git_info['commit_hash']} | 
-            Message: {git_info['commit_message'][:50]}...
+            Commit: {git_info['commit_hash']}
         </div>
         <div class="warning">
             <strong>注意:</strong> 此统计仅包含根目录下的 *_latest.txt 和 *_latest.yaml 文件
@@ -467,26 +464,6 @@ def generate_html_report(stats_data, output_dir):
     with open(os.path.join(output_dir, 'stats.json'), 'w', encoding='utf-8') as f:
         json.dump(stats_data, f, ensure_ascii=False, indent=2, default=str)
 
-def should_skip_execution():
-    """判断是否应该跳过执行（防止自循环）"""
-    try:
-        # 检查最近的提交是否包含 stats 目录的更改
-        result = subprocess.run(['git', 'diff', '--name-only', 'HEAD~1', 'HEAD'], 
-                              capture_output=True, text=True)
-        changed_files = result.stdout.strip().split('\n')
-        
-        # 如果只有 stats 目录被更改，说明是上次运行的结果，跳过执行
-        stats_changes_only = all(file_path.startswith('stats/') for file_path in changed_files if file_path)
-        
-        if stats_changes_only and len([f for f in changed_files if f]) > 0:
-            print("检测到只有 stats 目录更改，跳过执行以防止自循环")
-            return True
-        
-        return False
-    except:
-        # 如果无法获取 git 信息，继续执行
-        return False
-
 def main():
     """主函数"""
     branch_name = os.environ.get('GITHUB_REF_NAME', 'main')
@@ -494,11 +471,6 @@ def main():
     
     if branch_name != 'main':
         print("非 main 分支，跳过执行")
-        return
-    
-    # 检查是否应该跳过执行（防止自循环）
-    if should_skip_execution():
-        print("跳过执行以防止自循环")
         return
     
     print("开始分析根目录下的 *_latest.txt 和 *_latest.yaml 文件...")
