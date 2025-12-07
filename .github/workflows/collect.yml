@@ -263,7 +263,7 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: "Bot: Daily config update (Beijing ${{ steps.dates.outputs.BJ_TODAY_YMD }})"
-        file_pattern: "*_latest.* index.html"
+        file_pattern: '*_latest.* index.html'
         add_options: '-A'
         token: ${{ secrets.REPO_ACCESS_TOKEN }}
         skip_dirty_check: true
