@@ -138,8 +138,8 @@ def get_run_info():
         'actor': os.environ.get('GITHUB_ACTOR', 'unknown')
     }
 
-def generate_html_report(stats_data, output_dir):
-    """生成 HTML 报告"""
+def generate_html_report(stats_data):
+    """生成 HTML 报告到根目录"""
     run_info = get_run_info()
     
     html_content = f"""
@@ -445,15 +445,12 @@ def generate_html_report(stats_data, output_dir):
 </html>
     """
     
-    # 确保输出目录存在
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # 写入 HTML 文件
-    with open(os.path.join(output_dir, 'index.html'), 'w', encoding='utf-8') as f:
+    # 写入根目录的 index.html 文件
+    with open('index.html', 'w', encoding='utf-8') as f:
         f.write(html_content)
     
     # 生成 JSON 数据文件（便于后续处理）
-    with open(os.path.join(output_dir, 'stats.json'), 'w', encoding='utf-8') as f:
+    with open('stats.json', 'w', encoding='utf-8') as f:
         json.dump(stats_data, f, ensure_ascii=False, indent=2, default=str)
 
 def main():
@@ -479,6 +476,22 @@ def main():
     stats_data = analyze_files(files)
     print(f"分析完成: {stats_data['stats']}")
     
-    # 生成 HTML 报告
-    output_dir = 'stats'
-   
+    # 生成 HTML 报告到根目录
+    generate_html_report(stats_data)
+    print(f"HTML 报告已生成到根目录 index.html")
+    
+    # 打印摘要
+    print("\n=== 统计摘要 ===")
+    print(f"总文件数: {stats_data['stats']['total_count']}")
+    print(f"TXT 文件: {stats_data['stats']['txt_count']}")
+    print(f"YAML 文件: {stats_data['stats']['yaml_count']}")
+    print(f"总大小: {format_size(stats_data['total_size'])}")
+    print(f"生成分支: {branch_name}")
+    
+    # 列出找到的文件
+    print("\n=== 找到的文件 ===")
+    for file_path in files:
+        print(f"- {file_path}")
+
+if __name__ == "__main__":
+    main()
