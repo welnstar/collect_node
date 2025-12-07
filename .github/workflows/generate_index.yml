@@ -35,16 +35,16 @@ jobs:
     - name: Run statistics generator
       run: python .github/scripts/generate_stats.py
 
-    - name: Commit and push changes
+    - name: Commit and push if changed
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'actions@github.com'
         git add stats/
-        if git diff --staged --quiet; then
-          echo "No changes to commit"
+        if ! git diff --cached --quiet; then
+          git commit -m "chore: auto-update latest files statistics [skip ci]"
+          git push
         else
-          git commit -m "Update latest files statistics [skip ci]" --quiet
-          git push origin main
+          echo "No changes to stats directory"
         fi
       env:
         GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
