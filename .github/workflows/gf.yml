@@ -1,0 +1,73 @@
+name: Generate File Index
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '*_latest.txt'
+      - '*_latest.yaml'
+      - '*_latest.yml'
+      - '!.github/workflows/**'
+      - '!index.html'
+  workflow_dispatch:
+
+jobs:
+  generate-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: List all files in root directory
+        run: |
+          echo "=== All files in root directory ==="
+          ls -la
+          echo ""
+          echo "=== Matching *_latest files ==="
+          ls *_latest.txt *_latest.yaml *_latest.yml 2>/dev/null || echo "No matching files found"
+
+      - name: Generate index.html with shell
+        run: |
+          cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Latest Files Index</title>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; }
+              .file { padding: 10px; border-bottom: 1px solid #eee; }
+              .filename { font-weight: bold; color: #007bff; }
+            </style>
+          </head>
+          <body>
+            <h1>Latest Files Index</h1>
+            <div id="files">
+          EOF
+          
+          # 获取所有匹配的文件
+          for file in *_latest.txt *_latest.yaml *_latest.yml; do
+            if [ -f "$file" ]; then
+              echo "<div class='file'><span class='filename'>$file</span></div>" >> index.html
+            fi
+          done
+          
+          cat >> index.html << 'EOF'
+            </div>
+            <p>Generated on: $(date)</p>
+          </body>
+          </html>
+          EOF
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Update file index [skip ci]"
+            git push
+          else
+            echo "No changes to index.html"
+          fi
