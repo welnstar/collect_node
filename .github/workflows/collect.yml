@@ -224,13 +224,48 @@ jobs:
           echo "has_changes=false" >> "$GITHUB_OUTPUT"
           echo "No changes detected, will not commit."
         fi
+    - name: Generate index.html
+      if: steps.git_check.outputs.has_changes == 'true'
+      run: |
+        cat > index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Latest Files Index</title>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .file { padding: 10px; border-bottom: 1px solid #eee; }
+            .filename { font-weight: bold; color: #007bff; }
+          </style>
+        </head>
+        <body>
+          <h1>Latest Files Index</h1>
+          <div id="files">
+        EOF
+    
+        for file in *_latest.txt *_latest.yaml *_latest.yml; do
+          if [ -f "$file" ]; then
+            echo "<div class='file'><span class='filename'>$file</span></div>" >> index.html
+          fi
+        done
+
+        # ✅ 使用固定日期（避免时间戳导致无意义变更）
+        cat >> index.html << EOF
+          </div>
+          <p>Generated on: ${{ steps.dates.outputs.BJ_TODAY_YMD }}</p>
+        </body>
+        </html>
+        EOF
 
     - name: Commit and push changes
       if: steps.git_check.outputs.has_changes == 'true'
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: "Bot: Daily config update (Beijing ${{ steps.dates.outputs.BJ_TODAY_YMD }})"
-        file_pattern: '*_latest.*'
+        file_pattern: |
+          *_latest.*
+          index.html
         add_options: '-A'
         token: ${{ secrets.REPO_ACCESS_TOKEN }}
         skip_dirty_check: true
