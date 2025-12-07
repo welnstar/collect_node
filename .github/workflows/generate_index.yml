@@ -8,43 +8,38 @@ on:
       - '*_latest.yaml'
       - '*_latest.yml'
       - '!.github/workflows/**'
-      - '!stats/**'
-  workflow_dispatch:  # 允许手动触发
+      - '!index.html'
+      - '!stats.json'
 
 jobs:
   generate-stats:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.REPO_ACCESS_TOKEN }}
-        fetch-depth: 2
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.9'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyYAML
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install PyYAML
+      - name: Generate statistics
+        run: python .github/scripts/generate_stats.py
 
-    - name: Run statistics generator
-      run: python .github/scripts/generate_stats.py
-
-    - name: Commit and push if changed
-      run: |
-        git config --global user.name 'GitHub Actions'
-        git config --global user.email 'actions@github.com'
-        git add stats/
-        if ! git diff --cached --quiet; then
-          git commit -m "chore: auto-update latest files statistics [skip ci]"
-          git push
-        else
-          echo "No changes to stats directory"
-        fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git add index.html stats.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: auto-update latest files statistics [skip ci]"
+            git push
+          else
+            echo "No changes to index.html or stats.json"
+          fi
