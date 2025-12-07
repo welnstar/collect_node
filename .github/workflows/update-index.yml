@@ -1,22 +1,35 @@
-name: Generate index.html
+name: Generate Latest Files Statistics
+
 on:
   push:
-    branches: [ main ]  # 或你的主分支名
+    branches: [ main ]
+    paths:
+      - '*_latest.txt'
+      - '*_latest.yaml'
+      - '*_latest.yml'
+      - '!.github/workflows/**'
+      - '!index.html'
 
 jobs:
-  build:
+  generate-stats:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyYAML
 
-      - name: Generate index.html
-        run: node generate_index.js
+      - name: Generate statistics
+        run: python .github/scripts/generate_stats.py
 
       - name: Commit and push if changed
         run: |
@@ -24,7 +37,7 @@ jobs:
           git config --global user.email 'actions@github.com'
           git add index.html
           if ! git diff --cached --quiet; then
-            git commit -m "chore: auto-update file index"
+            git commit -m "chore: auto-update latest files statistics"
             git push
           else
             echo "No changes to index.html"
