@@ -4,11 +4,11 @@ on:
   push:
     branches: [ main ]
     paths:
-      - '*_latest.txt'      # 根目录下的 *_latest.txt 文件
-      - '*_latest.yaml'     # 根目录下的 *_latest.yaml 文件
-      - '*_latest.yml'      # 根目录下的 *_latest.yml 文件
-      - '!.github/workflows/**'  # 排除工作流文件本身的变化
-      - '!stats/**'         # 排除 stats 目录，防止自循环
+      - '*_latest.txt'
+      - '*_latest.yaml'
+      - '*_latest.yml'
+      - '!.github/workflows/**'
+      - '!stats/**'
   workflow_dispatch:  # 允许手动触发
 
 jobs:
@@ -16,11 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 2
         token: ${{ secrets.REPO_ACCESS_TOKEN }}
+        fetch-depth: 2
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -42,4 +42,4 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./stats
         publish_branch: gh-pages
-        force_orphan: true  # 使用孤儿分支，避免历史记录
+        force_orphan: true
